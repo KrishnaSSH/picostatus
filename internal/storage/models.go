@@ -11,9 +11,18 @@ type Check struct {
 	UpdatedAt time.Time
 }
 
+type Status string
+
+const (
+	StatusUp      Status = "up"
+	StatusDown    Status = "down"
+	StatusUnknown Status = "unknown"
+)
+
 type Result struct {
 	ID        int64
 	CheckID   int64
+	Status    Status
 	Success   bool
 	LatencyMS int64
 	Error     string
