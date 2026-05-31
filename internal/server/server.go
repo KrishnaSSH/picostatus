@@ -44,18 +44,27 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resultByCheck := make(map[uint]storage.Result, len(latest))
+	uptimes, err := s.repo.GetAllUptimes()
+	if err != nil {
+		jsonError(w, "failed to load uptime stats", http.StatusInternalServerError)
+		return
+	}
+
+	resultByCheck := make(map[int64]storage.Result, len(latest))
 	for _, res := range latest {
 		resultByCheck[res.CheckID] = res
 	}
 
 	type checkStatus struct {
-		ID        uint           `json:"id"`
+		ID        int64          `json:"id"`
 		Name      string         `json:"name"`
 		Target    string         `json:"target"`
 		Status    storage.Status `json:"status"`
 		LatencyMS int64          `json:"latency_ms"`
 		Error     string         `json:"error,omitempty"`
+		Uptime1h  float64        `json:"uptime_1h"`
+		Uptime24h float64        `json:"uptime_24h"`
+		Uptime7d  float64        `json:"uptime_7d"`
 	}
 
 	out := make([]checkStatus, 0, len(checks))
@@ -71,6 +80,11 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 			cs.LatencyMS = res.LatencyMS
 			cs.Error = res.Error
 		}
+		if u, ok := uptimes[c.ID]; ok {
+			cs.Uptime1h = u.Uptime1h
+			cs.Uptime24h = u.Uptime24h
+			cs.Uptime7d = u.Uptime7d
+		}
 		out = append(out, cs)
 	}
 
@@ -79,13 +93,13 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		jsonError(w, "invalid check id", http.StatusBadRequest)
 		return
 	}
 
-	results, err := s.repo.GetCheckHistory(uint(id), 30)
+	results, err := s.repo.GetCheckHistory(id, 30)
 	if err != nil {
 		jsonError(w, "failed to load history", http.StatusInternalServerError)
 		return

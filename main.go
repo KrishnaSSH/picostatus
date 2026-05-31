@@ -30,6 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to open db: %v", err)
 	}
+	defer db.Close()
 
 	repo := storage.NewRepository(db)
 
@@ -37,10 +38,24 @@ func main() {
 		log.Fatalf("failed to sync checks: %v", err)
 	}
 
+	checks, err := repo.GetChecks()
+	if err != nil {
+		log.Fatalf("failed to load checks: %v", err)
+	}
+
+	retainByName := make(map[string]int, len(cfg.Checks))
+	for _, c := range cfg.Checks {
+		retainByName[c.Name] = c.RetainResults
+	}
+	retainMap := make(map[int64]int, len(checks))
+	for _, c := range checks {
+		retainMap[c.ID] = retainByName[c.Name]
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	sched := scheduler.New(repo)
+	sched := scheduler.New(repo, retainMap)
 	go sched.Start(ctx)
 
 	srv := &http.Server{

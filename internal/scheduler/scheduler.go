@@ -11,11 +11,12 @@ import (
 )
 
 type Scheduler struct {
-	repo *storage.Repository
+	repo          *storage.Repository
+	retainResults map[int64]int
 }
 
-func New(repo *storage.Repository) *Scheduler {
-	return &Scheduler{repo: repo}
+func New(repo *storage.Repository, retainResults map[int64]int) *Scheduler {
+	return &Scheduler{repo: repo, retainResults: retainResults}
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
@@ -54,14 +55,14 @@ func (s *Scheduler) runLoop(ctx context.Context, c storage.Check) {
 }
 
 func (s *Scheduler) runOnce(ctx context.Context, c storage.Check) {
-	result := checker.HTTPChecker{URL: c.Target}.Run(ctx)
+	result := checker.HTTPChecker{URL: c.Target, Timeout: c.Timeout}.Run(ctx)
 
-	status := storage.StatusUp
-	if !result.Success {
-		status = storage.StatusDown
+	retain := s.retainResults[c.ID]
+	if retain <= 0 {
+		retain = 1000
 	}
 
-	if _, err := s.repo.InsertResult(c.ID, status, result.Success, result.LatencyMS, result.Error); err != nil {
+	if err := s.repo.InsertResult(c.ID, storage.Status(result.Status), result.LatencyMS, result.Error, retain); err != nil {
 		log.Printf("scheduler: failed to save result for %q: %v", c.Name, err)
 	}
 }

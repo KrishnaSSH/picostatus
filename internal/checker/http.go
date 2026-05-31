@@ -7,32 +7,35 @@ import (
 )
 
 type HTTPChecker struct {
-	URL string
+	URL     string
+	Timeout time.Duration
 }
 
 func (h HTTPChecker) Run(ctx context.Context) Result {
+	checkCtx, cancel := context.WithTimeout(ctx, h.Timeout)
+	defer cancel()
+
 	start := time.Now()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, h.URL, nil)
+	req, err := http.NewRequestWithContext(checkCtx, http.MethodGet, h.URL, nil)
 	if err != nil {
-		return Result{
-			Success: false,
-			Error:   err.Error(),
-		}
+		return Result{Status: "down", Error: err.Error()}
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
-		return Result{
-			Success: false,
-			Error:   err.Error(),
-		}
+		return Result{Status: "down", LatencyMS: time.Since(start).Milliseconds(), Error: err.Error()}
 	}
-
 	defer resp.Body.Close()
 
+	status := "down"
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		status = "up"
+	}
+
 	return Result{
-		Success:   resp.StatusCode >= 200 && resp.StatusCode < 300,
+		Status:    status,
 		LatencyMS: time.Since(start).Milliseconds(),
 	}
 }
