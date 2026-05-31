@@ -1,0 +1,9 @@
+[[checks]]
+name     = "gh status"
+url      = "https://githubstatus.com"
+interval = "30s"
+
+[[checks]]
+name     = "gh"
+url      = "https://github.com"
+interval = "60s"

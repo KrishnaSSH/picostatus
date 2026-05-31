@@ -1,8 +1,7 @@
 package storage
 
 import (
-	"time"
-
+	"github.com/krishnassh/picostatus/internal/config"
 	"gorm.io/gorm"
 )
 
@@ -14,12 +13,18 @@ func NewRepository(db *gorm.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) InsertCheck(name, target string, interval time.Duration) (*Check, error) {
-	check := &Check{Name: name, Target: target, Interval: interval}
-	if err := r.db.Create(check).Error; err != nil {
-		return nil, err
+func (r *Repository) SyncChecks(cfgChecks []config.Check) error {
+	for _, c := range cfgChecks {
+		check := Check{Name: c.Name}
+		err := r.db.
+			Where(Check{Name: c.Name}).
+			Assign(Check{Target: c.URL, Interval: c.Interval}).
+			FirstOrCreate(&check).Error
+		if err != nil {
+			return err
+		}
 	}
-	return check, nil
+	return nil
 }
 
 func (r *Repository) InsertResult(checkID uint, status Status, success bool, latencyMS int64, checkErr string) (*Result, error) {
@@ -52,6 +57,18 @@ func (r *Repository) GetLatestResults() ([]Result, error) {
 			Select("MAX(id)").
 			Group("check_id"),
 		).
+		Find(&results).Error; err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+func (r *Repository) GetCheckHistory(checkID uint, limit int) ([]Result, error) {
+	var results []Result
+	if err := r.db.
+		Where("check_id = ?", checkID).
+		Order("created_at DESC").
+		Limit(limit).
 		Find(&results).Error; err != nil {
 		return nil, err
 	}

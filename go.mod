@@ -3,6 +3,7 @@ module github.com/krishnassh/picostatus
 go 1.26.2
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.31.1
 )
