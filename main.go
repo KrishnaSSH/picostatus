@@ -18,5 +18,7 @@ func main() {
 
 	res := checker.HTTPChecker{URL: url}.Run(context.Background())
 
-	fmt.Println(res)
+	fmt.Println("Success:", res.Success)
+	fmt.Println("Latency:", res.LatencyMS, "ms")
+	fmt.Println("Error  :", res.Error)
 }

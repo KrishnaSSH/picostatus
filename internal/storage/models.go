@@ -1,14 +1,17 @@
 package storage
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Check struct {
-	ID        int64
-	Name      string
-	Target    string
-	Interval  time.Duration
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	gorm.Model
+	Name     string        `gorm:"not null"`
+	Target   string        `gorm:"not null"`
+	Interval time.Duration `gorm:"not null"`
+	Results  []Result      `gorm:"foreignKey:CheckID"`
 }
 
 type Status string
@@ -20,11 +23,10 @@ const (
 )
 
 type Result struct {
-	ID        int64
-	CheckID   int64
-	Status    Status
-	Success   bool
-	LatencyMS int64
+	gorm.Model
+	CheckID   uint   `gorm:"not null"`
+	Status    Status `gorm:"not null"`
+	Success   bool   `gorm:"not null"`
+	LatencyMS int64  `gorm:"not null"`
 	Error     string
-	CheckedAt time.Time
 }
