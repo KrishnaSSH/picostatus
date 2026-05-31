@@ -8,6 +8,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+//go:embed schema.sql
 var schema string
 
 func Open(path string) (*sql.DB, error) {
